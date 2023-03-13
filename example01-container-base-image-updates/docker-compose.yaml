@@ -1,7 +1,7 @@
 version: "3"
 services:
   example53:
-    image: ghcr.io/go-training/example53:latest
+    image: lxm8898/go-training:v1.0
     restart: always
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
