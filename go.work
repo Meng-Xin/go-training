@@ -1,0 +1,8 @@
+go 1.20
+
+
+use(
+    ./example01-container-base-image-updates
+    ./example02-FSM
+    ./example03-statusGo
+)
