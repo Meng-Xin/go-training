@@ -13,6 +13,7 @@ type StatusGo struct {
 	running bool
 	mu      sync.Mutex
 	ctx     context.Context
+	TimeOut int64
 	Start   chan struct{}
 	Runing  chan struct{}
 	Stop    chan struct{}
@@ -21,10 +22,15 @@ type StatusGo struct {
 func NewStatusGo(name string) *StatusGo {
 	return &StatusGo{
 		Name:   name,
+		ctx:    context.Background(),
 		Start:  make(chan struct{}, 1),
 		Runing: make(chan struct{}, 1),
 		Stop:   make(chan struct{}, 1),
 	}
+}
+
+func (s *StatusGo) SetTimeout(timing int64) {
+	s.TimeOut = timing
 }
 
 func (s *StatusGo) start() {
@@ -43,6 +49,7 @@ func (s *StatusGo) getRunning() bool {
 }
 
 func (s *StatusGo) startGo(f func()) {
+	ctx, _ := context.WithTimeout(s.ctx, time.Duration(s.TimeOut)*time.Second)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -53,6 +60,11 @@ func (s *StatusGo) startGo(f func()) {
 			s.Stop <- struct{}{}
 		}()
 		f()
+		select {
+		case <-ctx.Done():
+			fmt.Println("Context Canceled")
+			return
+		}
 		// 动态调用函数
 		// reflect.ValueOf(f).Call(convertArgs(args))
 	}()
@@ -83,9 +95,6 @@ func (s *StatusGo) ControllerGo(f func()) {
 		case <-s.Stop:
 			fmt.Println("Work End")
 			return
-		case <-s.ctx.Done():
-			fmt.Println("Work Timeout")
-			return
 		}
 	}
 }
@@ -103,15 +112,13 @@ func SleepTiming(mark int) {
 
 func main() {
 	stateGo := NewStatusGo("Test")
+	stateGo.SetTimeout(3)
 	for i := 0; i < 3; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-		stateGo.ctx = ctx
 		stateGo.ControllerGo(func() {
 			Add(1, 2)
 		})
 		stateGo.ControllerGo(func() {
 			SleepTiming(i)
-
 		})
 	}
 }
